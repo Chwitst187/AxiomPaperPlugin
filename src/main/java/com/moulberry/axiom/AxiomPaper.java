@@ -25,6 +25,7 @@ import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.papermc.paper.event.player.PlayerFailMoveEvent;
+import io.papermc.paper.event.server.ServerTickEndEvent;
 import io.papermc.paper.event.world.WorldGameRuleChangeEvent;
 import io.papermc.paper.network.ChannelInitializeListener;
 import io.papermc.paper.network.ChannelInitializeListenerHolder;
@@ -245,8 +246,6 @@ public class AxiomPaper extends JavaPlugin implements Listener {
         } catch (IOException ignored) {}
         ServerHeightmaps.load(heightmapsPath);
 
-        Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> this.tick(), 1, 1);
-
         this.sendMarkers = this.configuration.getBoolean("send-markers");
         this.maxChunkRelightsPerTick = this.configuration.getInt("max-chunk-relights-per-tick");
         this.maxChunkSendsPerTick = this.configuration.getInt("max-chunk-sends-per-tick");
@@ -411,29 +410,25 @@ public class AxiomPaper extends JavaPlugin implements Listener {
             for (Player player : Bukkit.getServer().getOnlinePlayers()) {
                 UUID uuid = player.getUniqueId();
                 if (this.activeAxiomPlayers.contains(uuid)) {
-                    player.getScheduler().run(this, task -> {
-                        if (!this.hasPermission(player, AxiomPermission.USE)) {
-                            FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-                            buf.writeBoolean(false);
-                            byte[] bytes = ByteBufUtil.getBytes(buf);
-                            VersionHelper.sendCustomPayload(player, "axiom:enable", bytes);
+                    if (!this.hasPermission(player, AxiomPermission.USE)) {
+                        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+                        buf.writeBoolean(false);
+                        byte[] bytes = ByteBufUtil.getBytes(buf);
+                        VersionHelper.sendCustomPayload(player, "axiom:enable", bytes);
 
-                            this.failedPermissionAxiomPlayers.add(uuid);
-                            this.activeAxiomPlayers.remove(uuid);
-                        } else {
-                            tickPlayer(player, true);
-                        }
-                    }, null);
+                        this.failedPermissionAxiomPlayers.add(uuid);
+                        this.activeAxiomPlayers.remove(uuid);
+                    } else {
+                        tickPlayer(player, true);
+                    }
 
                     stillActiveAxiomPlayers.add(uuid);
                 } else if (this.failedPermissionAxiomPlayers.contains(uuid)) {
-                    player.getScheduler().run(this, task -> {
-                        if (this.hasPermission(player, AxiomPermission.USE)) {
-                            VersionHelper.sendCustomPayload(player, "axiom:redo_handshake", new byte[]{});
-                            this.failedPermissionAxiomPlayers.remove(uuid);
-                            this.activeAxiomPlayers.add(uuid);
-                        }
-                    }, null);
+                    if (this.hasPermission(player, AxiomPermission.USE)) {
+                        VersionHelper.sendCustomPayload(player, "axiom:redo_handshake", new byte[]{});
+                        this.failedPermissionAxiomPlayers.remove(uuid);
+                        this.activeAxiomPlayers.add(uuid);
+                    }
 
                     stillFailedAxiomPlayers.add(uuid);
                 }
@@ -452,7 +447,7 @@ public class AxiomPaper extends JavaPlugin implements Listener {
             for (UUID uuid : this.activeAxiomPlayers) {
                 Player player = Bukkit.getPlayer(uuid);
                 if (player != null) {
-                    player.getScheduler().run(this, task -> tickPlayer(player, false), null);
+                    tickPlayer(player, false);
                 }
             }
         }
@@ -464,6 +459,11 @@ public class AxiomPaper extends JavaPlugin implements Listener {
         ImplServerCustomBlocks.tick();
         ImplServerCustomDisplays.tick();
         ImplAxiomHiddenEntities.tick();
+    }
+
+    @EventHandler
+    public void onServerTick(ServerTickEndEvent ignored) {
+        this.tick();
     }
 
     public void addPendingOperation(ServerLevel level, PendingOperation operation) {
