@@ -68,25 +68,29 @@ public class SetBlockBufferPacketListener implements PacketHandler {
 
     public void onReceive(Player player, RegistryFriendlyByteBuf friendlyByteBuf) {
         ServerPlayer serverPlayer = ((CraftPlayer)player).getHandle();
-        MinecraftServer server = serverPlayer.level().getServer();
-        if (server == null) return;
+        try {
+            MinecraftServer server = serverPlayer.level().getServer();
+            if (server == null) return;
 
-        ResourceKey<Level> worldKey = friendlyByteBuf.readResourceKey(Registries.DIMENSION);
-        friendlyByteBuf.readUUID(); // Discard, we don't need to associate buffers
+            ResourceKey<Level> worldKey = friendlyByteBuf.readResourceKey(Registries.DIMENSION);
+            friendlyByteBuf.readUUID(); // Discard, we don't need to associate buffers
 
-        byte type = friendlyByteBuf.readByte();
-        if (type == 0) {
-            BlockBuffer buffer = BlockBuffer.load(friendlyByteBuf, this.plugin.getBlockRegistry(serverPlayer.getUUID()), serverPlayer.getBukkitEntity());
-            int clientAvailableDispatchSends = friendlyByteBuf.readVarInt();
+            byte type = friendlyByteBuf.readByte();
+            if (type == 0) {
+                BlockBuffer buffer = BlockBuffer.load(friendlyByteBuf, this.plugin.getBlockRegistry(serverPlayer.getUUID()), serverPlayer.getBukkitEntity());
+                int clientAvailableDispatchSends = friendlyByteBuf.readVarInt();
 
-            applyBlockBuffer(serverPlayer, server, buffer, worldKey, clientAvailableDispatchSends);
-        } else if (type == 1) {
-            BiomeBuffer buffer = BiomeBuffer.load(friendlyByteBuf);
-            int clientAvailableDispatchSends = friendlyByteBuf.readVarInt();
+                applyBlockBuffer(serverPlayer, server, buffer, worldKey, clientAvailableDispatchSends);
+            } else if (type == 1) {
+                BiomeBuffer buffer = BiomeBuffer.load(friendlyByteBuf);
+                int clientAvailableDispatchSends = friendlyByteBuf.readVarInt();
 
-            applyBiomeBuffer(serverPlayer, server, buffer, worldKey, clientAvailableDispatchSends);
-        } else {
-            throw new RuntimeException("Unknown buffer type: " + type);
+                applyBiomeBuffer(serverPlayer, server, buffer, worldKey, clientAvailableDispatchSends);
+            } else {
+                throw new RuntimeException("Unknown buffer type: " + type);
+            }
+        } catch (UnsupportedOperationException e) {
+            this.plugin.getLogger().warning("Ignoring unsupported axiom:set_buffer payload from " + serverPlayer.getScoreboardName() + ": " + e);
         }
     }
 
