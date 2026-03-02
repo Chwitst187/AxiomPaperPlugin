@@ -28,7 +28,6 @@ import io.papermc.paper.event.player.PlayerFailMoveEvent;
 import io.papermc.paper.event.world.WorldGameRuleChangeEvent;
 import io.papermc.paper.network.ChannelInitializeListener;
 import io.papermc.paper.network.ChannelInitializeListenerHolder;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -81,11 +80,11 @@ public class AxiomPaper extends JavaPlugin implements Listener {
     public final Map<UUID, Restrictions> playerRestrictions = new ConcurrentHashMap<>();
     public final Map<UUID, IdMapper<BlockState>> playerBlockRegistry = new ConcurrentHashMap<>();
     public final Map<UUID, Integer> playerProtocolVersion = new ConcurrentHashMap<>();
-    private final Map<UUID, AxiomPermissionSet> playerPermissions = new HashMap<>();
-    private final Map<UUID, PlotSquaredIntegration.PlotBounds> lastPlotBoundsForPlayers = new HashMap<>();
-    private final Set<UUID> noPhysicalTriggerPlayers = new HashSet<>();
+    private final Map<UUID, AxiomPermissionSet> playerPermissions = new ConcurrentHashMap<>();
+    private final Map<UUID, PlotSquaredIntegration.PlotBounds> lastPlotBoundsForPlayers = new ConcurrentHashMap<>();
+    private final Set<UUID> noPhysicalTriggerPlayers = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final OperationQueue operationQueue = new OperationQueue();
-    private final Object2IntOpenHashMap<UUID> availableDispatchSends = new Object2IntOpenHashMap<>();
+    private final Map<UUID, Integer> availableDispatchSends = new ConcurrentHashMap<>();
     public Configuration configuration;
 
     public IdMapper<BlockState> allowedBlockRegistry = null;
@@ -246,7 +245,7 @@ public class AxiomPaper extends JavaPlugin implements Listener {
         } catch (IOException ignored) {}
         ServerHeightmaps.load(heightmapsPath);
 
-        Bukkit.getScheduler().scheduleSyncRepeatingTask(this, this::tick, 1, 1);
+        Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> this.tick(), 1, 1);
 
         this.sendMarkers = this.configuration.getBoolean("send-markers");
         this.maxChunkRelightsPerTick = this.configuration.getInt("max-chunk-relights-per-tick");
@@ -412,25 +411,31 @@ public class AxiomPaper extends JavaPlugin implements Listener {
             for (Player player : Bukkit.getServer().getOnlinePlayers()) {
                 UUID uuid = player.getUniqueId();
                 if (this.activeAxiomPlayers.contains(uuid)) {
-                    if (!this.hasPermission(player, AxiomPermission.USE)) {
-                        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-                        buf.writeBoolean(false);
-                        byte[] bytes = ByteBufUtil.getBytes(buf);
-                        VersionHelper.sendCustomPayload(player, "axiom:enable", bytes);
+                    player.getScheduler().run(this, task -> {
+                        if (!this.hasPermission(player, AxiomPermission.USE)) {
+                            FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+                            buf.writeBoolean(false);
+                            byte[] bytes = ByteBufUtil.getBytes(buf);
+                            VersionHelper.sendCustomPayload(player, "axiom:enable", bytes);
 
-                        this.failedPermissionAxiomPlayers.add(uuid);
-                        stillFailedAxiomPlayers.add(uuid);
-                    } else {
-                        stillActiveAxiomPlayers.add(uuid);
-                        tickPlayer(player, true);
-                    }
+                            this.failedPermissionAxiomPlayers.add(uuid);
+                            this.activeAxiomPlayers.remove(uuid);
+                        } else {
+                            tickPlayer(player, true);
+                        }
+                    }, null);
+
+                    stillActiveAxiomPlayers.add(uuid);
                 } else if (this.failedPermissionAxiomPlayers.contains(uuid)) {
-                    if (this.hasPermission(player, AxiomPermission.USE)) {
-                        VersionHelper.sendCustomPayload(player, "axiom:redo_handshake", new byte[]{});
-                        this.failedPermissionAxiomPlayers.remove(uuid);
-                    } else {
-                        stillFailedAxiomPlayers.add(uuid);
-                    }
+                    player.getScheduler().run(this, task -> {
+                        if (this.hasPermission(player, AxiomPermission.USE)) {
+                            VersionHelper.sendCustomPayload(player, "axiom:redo_handshake", new byte[]{});
+                            this.failedPermissionAxiomPlayers.remove(uuid);
+                            this.activeAxiomPlayers.add(uuid);
+                        }
+                    }, null);
+
+                    stillFailedAxiomPlayers.add(uuid);
                 }
             }
 
@@ -447,7 +452,7 @@ public class AxiomPaper extends JavaPlugin implements Listener {
             for (UUID uuid : this.activeAxiomPlayers) {
                 Player player = Bukkit.getPlayer(uuid);
                 if (player != null) {
-                    tickPlayer(player, false);
+                    player.getScheduler().run(this, task -> tickPlayer(player, false), null);
                 }
             }
         }
@@ -507,7 +512,7 @@ public class AxiomPaper extends JavaPlugin implements Listener {
             this.availableDispatchSends.put(player.getUniqueId(), allowedDispatchSendsPerSecond*20);
             sendUpdateAvailableDispatchSends(player, allowedDispatchSendsPerSecond, allowedDispatchSendsPerSecond);
         } else {
-            int previousAllowed20 = this.availableDispatchSends.getInt(player.getUniqueId());
+            int previousAllowed20 = this.availableDispatchSends.getOrDefault(player.getUniqueId(), allowedDispatchSendsPerSecond*20);
             int newAllowed20 = Math.min(allowedDispatchSendsPerSecond*20, previousAllowed20 + allowedDispatchSendsPerSecond);
             this.availableDispatchSends.put(player.getUniqueId(), newAllowed20);
 

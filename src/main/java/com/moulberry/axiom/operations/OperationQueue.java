@@ -21,10 +21,6 @@ public class OperationQueue {
     private final Map<ServerLevel, List<PendingOperation>> pendingOperations = new HashMap<>();
 
     public void tick() {
-        if (!MinecraftServer.getServer().isSameThread()) {
-            throw new WrongThreadException();
-        }
-
         this.executionLock.lock(); // Just in case we're in some weird Folia environment or something
         try {
             this.queueLock.lock();
