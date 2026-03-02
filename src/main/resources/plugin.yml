@@ -1,4 +1,4 @@
-name: $name
+name: AxiomFolia
 version: $version
 main: com.moulberry.axiom.AxiomPaper
 description: $description
