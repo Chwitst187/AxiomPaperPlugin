@@ -150,9 +150,10 @@ public class WorldExtension {
         // Send chunks
         LongIterator longIterator = this.pendingChunksToSend.longIterator();
         while (longIterator.hasNext()) {
-            ChunkPos chunkPos = ChunkPosCompat.fromLong(longIterator.nextLong());
+            long chunkPosLong = longIterator.nextLong();
+            ChunkPos chunkPos = ChunkPosCompat.fromLong(chunkPosLong);
 
-            LevelChunk chunk = this.level.getChunkIfLoaded(chunkPos.x(), chunkPos.z());
+            LevelChunk chunk = this.level.getChunkIfLoaded(ChunkPosCompat.getX(chunkPosLong), ChunkPosCompat.getZ(chunkPosLong));
             if (chunk == null) {
                 continue;
             }
