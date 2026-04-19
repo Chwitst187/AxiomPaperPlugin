@@ -12,7 +12,15 @@ public final class ChunkPosCompat {
     }
 
     public static ChunkPos fromLong(long chunkPosLong) {
-        return new ChunkPos(ChunkPos.getX(chunkPosLong), ChunkPos.getZ(chunkPosLong));
+        return new ChunkPos(getX(chunkPosLong), getZ(chunkPosLong));
+    }
+
+    public static int getX(long chunkPosLong) {
+        return ChunkPos.getX(chunkPosLong);
+    }
+
+    public static int getZ(long chunkPosLong) {
+        return ChunkPos.getZ(chunkPosLong);
     }
 
 }
