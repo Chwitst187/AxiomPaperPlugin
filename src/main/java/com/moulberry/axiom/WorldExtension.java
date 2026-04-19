@@ -3,6 +3,7 @@ package com.moulberry.axiom;
 import com.moulberry.axiom.annotations.ServerAnnotations;
 import com.moulberry.axiom.marker.MarkerData;
 import com.moulberry.axiom.paperapi.entity.ImplAxiomHiddenEntities;
+import com.moulberry.axiom.util.ChunkPosCompat;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.longs.*;
@@ -61,11 +62,11 @@ public class WorldExtension {
     private final Map<UUID, MarkerData> previousMarkerData = new HashMap<>();
 
     public void sendChunk(int cx, int cz) {
-        this.pendingChunksToSend.add(ChunkPos.pack(cx, cz));
+        this.pendingChunksToSend.add(ChunkPosCompat.asLong(cx, cz));
     }
 
     public void lightChunk(int cx, int cz) {
-        this.pendingChunksToLight.add(ChunkPos.pack(cx, cz));
+        this.pendingChunksToLight.add(ChunkPosCompat.asLong(cx, cz));
     }
 
     public void onPlayerJoin(Player player) {

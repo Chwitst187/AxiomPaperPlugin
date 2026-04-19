@@ -4,6 +4,7 @@ import com.moulberry.axiom.AxiomConstants;
 import com.moulberry.axiom.VersionHelper;
 import com.moulberry.axiom.buffer.CompressedBlockEntity;
 import com.moulberry.axiom.packet.impl.RequestChunkDataPacketListener;
+import com.moulberry.axiom.util.ChunkPosCompat;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -121,7 +122,7 @@ public class RequestChunksOperation implements PendingOperation {
             chunkFutureIterator.remove();
 
             LevelChunk chunk = (LevelChunk) ((CraftChunk)future.join()).getHandle(ChunkStatus.FULL);
-            long chunkPosLong = ChunkPos.pack(chunk.locX, chunk.locZ);
+            long chunkPosLong = ChunkPosCompat.asLong(chunk.locX, chunk.locZ);
             LongList blockEntitiesInChunk = this.sendBlockEntityForPendingChunks.get(chunkPosLong);
             if (blockEntitiesInChunk != null) {
                 LongIterator iterator = blockEntitiesInChunk.longIterator();
