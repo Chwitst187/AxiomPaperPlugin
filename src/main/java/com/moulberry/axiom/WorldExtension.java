@@ -150,7 +150,7 @@ public class WorldExtension {
         // Send chunks
         LongIterator longIterator = this.pendingChunksToSend.longIterator();
         while (longIterator.hasNext()) {
-            ChunkPos chunkPos = ChunkPos.unpack(longIterator.nextLong());
+            ChunkPos chunkPos = ChunkPosCompat.fromLong(longIterator.nextLong());
 
             LevelChunk chunk = this.level.getChunkIfLoaded(chunkPos.x(), chunkPos.z());
             if (chunk == null) {
@@ -185,12 +185,12 @@ public class WorldExtension {
         longIterator = this.pendingChunksToLight.longIterator();
         if (maxChunkRelightsPerTick <= 0) {
             while (longIterator.hasNext()) {
-                chunkSet.add(ChunkPos.unpack(longIterator.nextLong()));
+                chunkSet.add(ChunkPosCompat.fromLong(longIterator.nextLong()));
             }
             this.pendingChunksToLight.clear();
         } else {
             while (longIterator.hasNext()) {
-                chunkSet.add(ChunkPos.unpack(longIterator.nextLong()));
+                chunkSet.add(ChunkPosCompat.fromLong(longIterator.nextLong()));
                 longIterator.remove();
 
                 maxChunkRelightsPerTick -= 1;
