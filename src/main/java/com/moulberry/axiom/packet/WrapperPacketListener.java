@@ -9,6 +9,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.logging.Level;
+
 public class WrapperPacketListener implements PluginMessageListener {
 
     private final PacketHandler packetHandler;
@@ -24,8 +26,17 @@ public class WrapperPacketListener implements PluginMessageListener {
             try {
                 this.packetHandler.onReceive(player, friendlyByteBuf);
             } catch (Throwable t) {
-                player.kick(Component.text("Error while processing packet " + s + ": " + t.getMessage()));
+                AxiomPaper.PLUGIN.getLogger().log(Level.SEVERE, "Error while processing packet " + s, t);
+                player.kick(Component.text("Error while processing packet " + s + ": " + formatThrowable(t)));
             }
         }, null, 1L);
+    }
+
+    private static String formatThrowable(Throwable throwable) {
+        String message = throwable.getMessage();
+        if (message == null || message.isBlank()) {
+            return throwable.getClass().getSimpleName();
+        }
+        return throwable.getClass().getSimpleName() + ": " + message;
     }
 }
