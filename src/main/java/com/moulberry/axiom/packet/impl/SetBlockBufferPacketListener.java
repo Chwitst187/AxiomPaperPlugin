@@ -13,7 +13,6 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.protocol.game.ClientboundChunksBiomesPacket;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
@@ -43,8 +42,6 @@ public class SetBlockBufferPacketListener implements PacketHandler {
 
     public void onReceive(Player player, RegistryFriendlyByteBuf friendlyByteBuf) {
         ServerPlayer serverPlayer = ((CraftPlayer)player).getHandle();
-        MinecraftServer server = serverPlayer.level().getServer();
-        if (server == null) return;
 
         ResourceKey<Level> worldKey = friendlyByteBuf.readResourceKey(Registries.DIMENSION);
         friendlyByteBuf.readUUID(); // Discard, we don't need to associate buffers
@@ -54,19 +51,19 @@ public class SetBlockBufferPacketListener implements PacketHandler {
             BlockBuffer buffer = BlockBuffer.load(friendlyByteBuf, this.plugin.getBlockRegistry(serverPlayer.getUUID()), serverPlayer.getBukkitEntity());
             int clientAvailableDispatchSends = friendlyByteBuf.readVarInt();
 
-            applyBlockBuffer(serverPlayer, server, buffer, worldKey, clientAvailableDispatchSends);
+            applyBlockBuffer(serverPlayer, buffer, worldKey, clientAvailableDispatchSends);
         } else if (type == 1) {
             BiomeBuffer buffer = BiomeBuffer.load(friendlyByteBuf);
             int clientAvailableDispatchSends = friendlyByteBuf.readVarInt();
 
-            applyBiomeBuffer(serverPlayer, server, buffer, worldKey, clientAvailableDispatchSends);
+            applyBiomeBuffer(serverPlayer, buffer, worldKey, clientAvailableDispatchSends);
         } else {
             throw new RuntimeException("Unknown buffer type: " + type);
         }
     }
 
-    private void applyBlockBuffer(ServerPlayer player, MinecraftServer server, BlockBuffer buffer, ResourceKey<Level> worldKey, int clientAvailableDispatchSends) {
-        server.execute(() -> {
+    private void applyBlockBuffer(ServerPlayer player, BlockBuffer buffer, ResourceKey<Level> worldKey, int clientAvailableDispatchSends) {
+        player.getBukkitEntity().getScheduler().execute(this.plugin, () -> {
             try {
                 if (this.plugin.logLargeBlockBufferChanges()) {
                     this.plugin.getLogger().info("Player " + player.getUUID() + " modified " + buffer.getSectionCount() + " chunk sections (blocks)");
@@ -94,11 +91,11 @@ public class SetBlockBufferPacketListener implements PacketHandler {
             } catch (Throwable t) {
                 player.getBukkitEntity().kick(net.kyori.adventure.text.Component.text("An error occured while processing block change: " + t.getMessage()));
             }
-        });
+        }, null, 1L);
     }
 
-    private void applyBiomeBuffer(ServerPlayer player, MinecraftServer server, BiomeBuffer biomeBuffer, ResourceKey<Level> worldKey, int clientAvailableDispatchSends) {
-        server.execute(() -> {
+    private void applyBiomeBuffer(ServerPlayer player, BiomeBuffer biomeBuffer, ResourceKey<Level> worldKey, int clientAvailableDispatchSends) {
+        player.getBukkitEntity().getScheduler().execute(this.plugin, () -> {
             try {
                 if (this.plugin.logLargeBlockBufferChanges()) {
                     this.plugin.getLogger().info("Player " + player.getUUID() + " modified " + biomeBuffer.getSectionCount() + " chunk sections (biomes)");
@@ -162,7 +159,7 @@ public class SetBlockBufferPacketListener implements PacketHandler {
             } catch (Throwable t) {
                 player.getBukkitEntity().kick(net.kyori.adventure.text.Component.text("An error occured while processing biome change: " + t.getMessage()));
             }
-        });
+        }, null, 1L);
     }
 
 }
