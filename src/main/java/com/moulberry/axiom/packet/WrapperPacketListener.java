@@ -1,8 +1,8 @@
 package com.moulberry.axiom.packet;
 
+import com.moulberry.axiom.AxiomPaper;
 import io.netty.buffer.Unpooled;
 import net.kyori.adventure.text.Component;
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
@@ -19,11 +19,13 @@ public class WrapperPacketListener implements PluginMessageListener {
 
     @Override
     public void onPluginMessageReceived(@NotNull String s, @NotNull Player player, @NotNull byte[] bytes) {
-        RegistryFriendlyByteBuf friendlyByteBuf = new RegistryFriendlyByteBuf(Unpooled.wrappedBuffer(bytes), ((CraftPlayer)player).getHandle().registryAccess());
-        try {
-            this.packetHandler.onReceive(player, friendlyByteBuf);
-        } catch (Throwable t) {
-            player.kick(Component.text("Error while processing packet " + s + ": " + t.getMessage()));
-        }
+        player.getScheduler().execute(AxiomPaper.PLUGIN, () -> {
+            RegistryFriendlyByteBuf friendlyByteBuf = new RegistryFriendlyByteBuf(Unpooled.wrappedBuffer(bytes), ((CraftPlayer)player).getHandle().registryAccess());
+            try {
+                this.packetHandler.onReceive(player, friendlyByteBuf);
+            } catch (Throwable t) {
+                player.kick(Component.text("Error while processing packet " + s + ": " + t.getMessage()));
+            }
+        }, null, 1L);
     }
 }

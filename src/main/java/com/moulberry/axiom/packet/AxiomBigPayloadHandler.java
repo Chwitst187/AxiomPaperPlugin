@@ -76,10 +76,10 @@ public class AxiomBigPayloadHandler extends MessageToMessageDecoder<ByteBuf> {
                     } else {
                         byte[] bytes = ByteBufUtil.getBytes(buf);
 
-                        player.level().getServer().execute(() -> {
+                        player.getBukkitEntity().getScheduler().execute(AxiomPaper.PLUGIN, () -> {
                             RegistryFriendlyByteBuf friendlyByteBuf = new RegistryFriendlyByteBuf(Unpooled.wrappedBuffer(bytes), player.registryAccess());
                             callReceive(handler, player, friendlyByteBuf, identifier);
-                        });
+                        }, null, 1L);
                     }
                     success = true;
                     in.readerIndex(in.writerIndex());
