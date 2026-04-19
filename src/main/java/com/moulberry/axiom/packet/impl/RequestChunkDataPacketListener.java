@@ -8,6 +8,7 @@ import com.moulberry.axiom.integration.plotsquared.PlotSquaredIntegration;
 import com.moulberry.axiom.operations.RequestChunksOperation;
 import com.moulberry.axiom.packet.PacketHandler;
 import com.moulberry.axiom.restrictions.AxiomPermission;
+import com.moulberry.axiom.util.ChunkPosCompat;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
@@ -149,12 +150,12 @@ public class RequestChunkDataPacketListener implements PacketHandler {
                         sendingBlockEntities.put(pos, CompressedBlockEntity.compress(tag, baos));
                     }
                 } else {
-                    long chunkPosLong = ChunkPos.pack(chunkX, chunkZ);
+                    long chunkPosLong = ChunkPosCompat.asLong(chunkX, chunkZ);
                     LongList blockEntitiesInChunk = sendBlockEntityForPendingChunks.get(chunkPosLong);
                     if (blockEntitiesInChunk != null) {
                         blockEntitiesInChunk.add(pos);
                     } else {
-                        chunkFutures.add(ChunkPos.pack(chunkX, chunkZ));
+                        chunkFutures.add(ChunkPosCompat.asLong(chunkX, chunkZ));
 
                         blockEntitiesInChunk = new LongArrayList();
                         blockEntitiesInChunk.add(pos);
@@ -216,12 +217,12 @@ public class RequestChunkDataPacketListener implements PacketHandler {
                         }
                     }
                 } else {
-                    long chunkPosLong = ChunkPos.pack(sx, sz);
+                    long chunkPosLong = ChunkPosCompat.asLong(sx, sz);
                     IntList sendSections = sendSectionsForPendingChunks.get(chunkPosLong);
                     if (sendSections != null) {
                         sendSections.add(sy);
                     } else {
-                        chunkFutures.add(ChunkPos.pack(sx, sz));
+                        chunkFutures.add(ChunkPosCompat.asLong(sx, sz));
 
                         sendSections = new IntArrayList();
                         sendSections.add(sy);
