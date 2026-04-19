@@ -25,9 +25,9 @@ import net.minecraft.server.level.ServerPlayer;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 
 public class AxiomBigPayloadHandler extends MessageToMessageDecoder<ByteBuf> {
 
@@ -111,8 +111,17 @@ public class AxiomBigPayloadHandler extends MessageToMessageDecoder<ByteBuf> {
         try {
             handler.onReceive(player.getBukkitEntity(), friendlyByteBuf);
         } catch (Throwable t) {
-            player.connection.disconnectAsync(net.minecraft.network.chat.Component.literal("Error while processing Axiom packet " + identifier + ": " + t.getMessage()), DisconnectionReason.UNKNOWN);
+            AxiomPaper.PLUGIN.getLogger().log(Level.SEVERE, "Error while processing Axiom packet " + identifier, t);
+            player.connection.disconnectAsync(net.minecraft.network.chat.Component.literal("Error while processing Axiom packet " + identifier + ": " + formatThrowable(t)), DisconnectionReason.UNKNOWN);
         }
+    }
+
+    private static String formatThrowable(Throwable throwable) {
+        String message = throwable.getMessage();
+        if (message == null || message.isBlank()) {
+            return throwable.getClass().getSimpleName();
+        }
+        return throwable.getClass().getSimpleName() + ": " + message;
     }
 
     public static void apply(ChannelPipeline pipeline, AxiomBigPayloadHandler handler) {
